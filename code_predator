@@ -1,0 +1,1411 @@
+#Python version
+#Example of code with predator
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Dec 21 09:47:37 2017
+
+@author: jasmi
+"""
+
+import itertools
+import numpy as np
+import scipy.stats as sp
+import random as rnd
+import math 
+import sys
+import timeit
+
+class Write_Weights:
+    
+    def __init__(self,
+                 Title,
+                 Number,
+                 sample_ind):
+                     
+        C,P=[],[]
+        
+        self.sample_weightsP = open((str(Number) + 'Sample_weightsP' + Title + '.txt'), 'w')
+        self.sample_weightsC = open((str(Number) + 'Sample_weightsC' + Title + '.txt'), 'w')
+        self.sample_weightsP.write('%20s'%'AdultWeights [kg]'+'\t'+'CurrentWeight[kg]' + '\n')
+        self.sample_weightsC.write('%20s'%'AdultWeights [kg]'+ '\t' + 'CurrentWeight[kg]'+'\n')
+        
+        for a in sample_ind:
+            if a.identity=='consumer':
+                C.append(a)
+            else:
+                P.append(a)
+                
+        for v in C[:50000]:
+            self.sample_weightsC.write('%20s'%str(v.AdultWeight) + '\t'+ '%20s'%str(v.Weight) + '\n')
+        for w in P[:50000]:
+            self.sample_weightsP.write('%20s'%str(w.AdultWeight) + '\t'+ '%20s'%str(w.Weight) + '\n')
+            
+            
+        #closing file                   
+        self.sample_weightsC.close()
+        self.sample_weightsP.close()
+
+class Write_Files:
+    
+    def __init__(self,
+                 Summary,
+                 ConList,
+                 Title,
+                 ResDist,
+                 landscape,
+                 grid,
+                 Variability,
+                 VariabilityP,
+                 VariabilityC,
+                 LocationsC,
+                 LocationsP,
+                 OC,
+                 OP,
+                 bsr):
+        '''Writing out the values within summary into text files'''
+        #create output file for the summary values
+        self.summary = open('Summary' + Title + '.txt', 'w')
+        self.sample_weightsC = open('Sample_weightsC' + Title + '.txt', 'w')
+        self.sample_weightsP = open('Sample_weightsP' + Title + '.txt', 'w')
+        self.cell_specific_data= open ('Cell_specific_data' + Title + '.txt', 'w')
+        self.variability=open('Variability'+Title+'.txt', 'w')
+        self.variabilityP=open('VariabilityP'+Title+'.txt', 'w')
+        self.variabilityC=open('VariabilityC'+Title+'.txt', 'w')
+        self.locationsC=open('LocationsC_' + Title + '.txt', 'w')
+        self.locationsP=open('LocationsP_' + Title + '.txt', 'w')
+        self.O=open('O_'+ Title + '.txt', 'w')
+        self.bsr=open('BSR'+Title+'.txt', 'w')
+        
+        #headings        
+        self.summary.write('%20s'%'Time' + '\t'+ \
+                           '%20s'%'MeanR[J/cell]' + '\t'+ \
+                           '%20s'%'VarR' + '\t'+ \
+                           '%20s'%'TotalAmountR'+'\t'+ \
+                           '%20s'%'TotalAdultsP'+'\t'+\
+                           '%20s'%'TotalLarvaeP'+'\t'+ \
+                           '%20s'%'TotalAdultsC'+'\t'+\
+                           '%20s'%'TotalLarvaeC'+'\t'+ \
+                           '%20s'% 'AWeightAverageP[kg]'+'\t'+ \
+                           '%20s'% 'AWeightVarianceP'+'\t'+ \
+                           '%20s'% 'AWeightSkewnessP'+'\t'+ \
+                           '%20s'% 'AWeightKurtosisP'+'\t'+ \
+                           '%20s'% 'AWeightCVP'+'\t'+ \
+                           '%20s'% 'AWeightLower[kg]P'+'\t'+ \
+                           '%20s'% 'AWeightUpper[kg]P'+'\t'+\
+                           '%20s'% 'AWeightAverageC[kg]'+'\t'+ \
+                           '%20s'% 'AWeightVarianceC'+'\t'+ \
+                           '%20s'% 'AWeightSkewnessC'+'\t'+ \
+                           '%20s'% 'AWeightKurtosisC'+'\t'+ \
+                           '%20s'% 'AWeightCVC'+'\t'+ \
+                           '%20s'% 'AWeightLower[kg]C'+'\t'+ \
+                           '%20s'% 'AWeightUpper[kg]C'+'\n')
+                        
+        self.sample_weightsP.write('%20s'%'AdultWeights [kg]' + '%20s'%'CurrentWeights [kg]' + '\t' + '%20s'%'Neutral gene' +'\n')
+        self.sample_weightsC.write('%20s'%'AdultWeights [kg]' + '%20s'%'CurrentWeights [kg]' + '\t' + '%20s'%'Neutral gene' +'\n')
+        self.cell_specific_data.write(self.Cell_specific_data(ResDist,ConList,landscape, grid))
+        self.variability.write(self.Calculate_variability(Variability))
+        self.variabilityP.write(self.Calculate_variability(VariabilityP))
+        self.variabilityC.write(self.Calculate_variability(VariabilityC))
+        #writing out values in both files                   
+        for time in Summary['Time']:        
+            self.summary.write('%20s'%str(time) + '\t'+ \
+                        '%20s'%str(Summary['MeanR'][time]) + '\t'+ \
+                        '%20s'%str(Summary['VarR'][time]) + '\t'+ \
+                        '%20s'%str(Summary['TotalAmountR'][time])+'\t'+ \
+                        '%20s'%str(Summary['TotalAdultsP'][time])+'\t'+\
+                        '%20s'%str(Summary['TotalLarvaeP'][time])+'\t'+ \
+                        '%20s'%str(Summary['TotalAdultsC'][time])+'\t'+\
+                        '%20s'%str(Summary['TotalLarvaeC'][time])+'\t'+ \
+                        '%20s'%str(Summary['AWeightAverageP'][time])+'\t'\
+                        '%20s'%str(Summary['AWeightVarianceP'][time])+'\t'\
+                        '%20s'%str(Summary['AWeightSkewnessP'][time])+'\t'\
+                        '%20s'%str(Summary['AWeightKurtosisP'][time])+'\t'\
+                        '%20s'%str(Summary['AWeightCVP'][time])+'\t'\
+                        '%20s'%str(Summary['AWeightLowerP'][time])+'\t'\
+                        '%20s'%str(Summary['AWeightUpperP'][time])+'\t'\
+                        '%20s'%str(Summary['AWeightAverageC'][time])+'\t'\
+                        '%20s'%str(Summary['AWeightVarianceC'][time])+'\t'\
+                        '%20s'%str(Summary['AWeightSkewnessC'][time])+'\t'\
+                        '%20s'%str(Summary['AWeightKurtosisC'][time])+'\t'\
+                        '%20s'%str(Summary['AWeightCVC'][time])+'\t'\
+                        '%20s'%str(Summary['AWeightLowerC'][time])+'\t'\
+                        '%20s'%str(Summary['AWeightUpperC'][time])+'\n')
+            
+        sample_indC=[ind for ind in ConList if ind.identity=='consumer'][:50000]         
+        sample_indP=[ind for ind in ConList if ind.identity=='predator'][:50000]   
+        
+        for a in sample_indC:
+            self.sample_weightsC.write('%20s'%str(a.AdultWeight)+'\t'+'%20s'%str(a.Weight)+'\t'+'%20s'%str(a.neutral)+'\n')
+        
+        for a in sample_indP:
+            self.sample_weightsP.write('%20s'%str(a.AdultWeight)+'\t'+'%20s'%str(a.Weight)+'\t'+'%20s'%str(a.neutral)+'\n')
+        
+        for item in LocationsC.keys(): 
+            self.locationsC.write(str(item))
+            for loc in LocationsC[item]:
+                self.locationsC.write(' '+ str(loc))
+            self.locationsC.write('\n')
+            
+        for item in LocationsP.keys(): 
+            self.locationsP.write(str(item))
+            for loc in LocationsP[item]:
+                self.locationsP.write(' '+ str(loc))
+            self.locationsP.write('\n')
+            
+
+        for item in OC:
+            self.O.write(str(item)+'\t')
+        self.O.write('\n')
+        for item in OP:
+            self.O.write(str(item)+'\t')    
+
+        for item in bsr:
+            self.bsr.write(str(item)+'\n')
+
+
+            
+        #closing files                   
+        self.summary.close()
+        self.sample_weightsC.close()
+        self.sample_weightsP.close()
+        self.cell_specific_data.close()
+        self.variability.close()
+        self.variabilityP.close()
+        self.variabilityC.close()
+        self.locationsC.close()
+        self.locationsP.close()
+        self.O.close()
+        self.bsr.close()
+        
+    def Cell_specific_data(self, ResDist, ConList, landscape, grid):
+        content= ''
+        content+='%20s'% 'y'+'\t'+ \
+                       '%20s'% 'x'+'\t'+ \
+                       '%20s'% 'NindCon'+'\t'+ \
+                       '%20s'% 'MeanAW_cellCon'+'\t'+ \
+                       '%20s'% 'NindPred'+'\t'+ \
+                       '%20s'% 'MeanAW_cellPred'+'\t'+ \
+                       '%20s'% 'Resources'+'\n'
+        ConDist=np.zeros(grid)
+        ConBS=np.zeros(grid)
+        PredDist=np.zeros(grid)
+        PredBS=np.zeros(grid)
+        for ind in ConList:
+            if ind.identity=='consumer':
+                ConDist[ind.y, ind.x]+=1
+                ConBS[ind.y, ind.x]+=ind.AdultWeight
+            else:
+                PredDist[ind.y, ind.x]+=1
+                PredBS[ind.y, ind.x]+=ind.AdultWeight
+                
+
+        for y in range (grid[0]):
+            for x in range (grid[1]):
+                if landscape[y,x]==1:
+                    #consumer
+                    if ConDist[y,x]>0:
+                        NindCon=ConDist[y,x]
+                        MeanAWCon=ConBS[y,x]/NindCon
+                    else: 
+                        NindCon, MeanAWCon = 'None', 'None'
+                    #predator    
+                    if PredDist[y,x]>0:
+                        NindPred=PredDist[y,x]
+                        MeanAWPred=PredBS[y,x]/NindPred
+                    else: 
+                        NindPred, MeanAWPred = 'None', 'None'
+                    #resource
+                    R= ResDist[y,x]
+
+                    
+                    content+='%20s'%str(y)+'\t'\
+                                '%20s'%str(x)+'\t'\
+                                '%20s'%str(NindCon)+'\t'\
+                                '%20s'%str(MeanAWCon)+'\t'\
+                                '%20s'%str(NindPred)+'\t'\
+                                '%20s'%str(MeanAWPred)+'\t'\
+                                '%20s'%str(R)+'\n'
+        return content         
+    
+    def Calculate_variability (self, Variability): 
+        a=np.cov(Variability)    
+        x=0
+        for i in range (len(Variability)):
+            x+=math.sqrt(a[i,i])
+        muM= sum([np.mean(b) for b in Variability])
+        alpha= (x/muM)**2
+      
+        y=0
+        for e in range (len(Variability)):
+            for f in range (len(Variability)):
+                y+=a[e,f] 
+        gamma= y/(muM**2)        
+        
+        beta1=alpha/gamma
+        beta2=alpha-gamma
+    
+        solution = '%20s'%str(alpha)+'\t'\
+                   '%20s'%str(beta1)+'\t'\
+                   '%20s'%str(beta2)+'\t'\
+                   '%20s'%str(gamma)
+                   
+        return solution
+
+
+        
+class ConInd:
+    def __init__(self,
+                 identity,
+                 AdultWeight, #kg
+                 neutral,
+                 t,
+                 x,
+                 y,
+                 Weight, #kg
+                 Energy, #J
+                 DevelAge = 0,
+                 stage=False,
+                 alive=True): #day
+        '''Creating a consumer individual'''
+        #defining whether individual is a consumer or a predator
+        self.identity=identity
+        #Weight when maturity is reached or potential maximal weight
+        self.AdultWeight = AdultWeight
+        #The current weight of an individual
+        self.Weight = Weight
+        # m0 (start weight): egg size for young
+        self.InitialWeight = Weight
+        #Energy reservoir for BMR, movement, growth and reproduction
+        self.Energy = Energy
+        # an individual's neutral marker for determining origin of variation
+        self.neutral = neutral
+        #an individuals developmental age according to the growth curve of West et al. (2001)
+        self.DevelAge = DevelAge
+        #time of introduction, immigration or birth
+        self.t=t
+        #saving x coordinate of location
+        self.x=x
+        #saving y coordinate of location
+        self.y=y
+        #individual is adult or not
+        self.Adult=stage
+        #is individual still alive or not
+        self.Alive=alive
+        
+
+         
+    def Consume_CI(self, TimeC):
+        '''Replenish an individual's energy reservoir with a
+           fraction of the consumed energy'''     
+        #Ingestation rate (Watts) of carnivorous poikilotherms
+        #(carnivorous, copepods, benthic detrivores): 
+        #2W ^ 0.80 (Peters 1983) 
+        return  TimeC *2.0 * (self.Weight**0.80)
+        
+    def BMR_CI(self):
+        
+        #Basal metabolic rate: 0.14W ^ 0.751 (Peters 1983) [J/s]        
+        #Energy expended on basal metabolic processes throughout the entire day
+        #Cost of movement already includes cost of BMR
+        BMRDay =  0.14 * (self.Weight**0.751) *24 * 3600#[J/day]
+        
+        #Energy for basal metabolic processes extracted from energy reservoir
+
+        self.Energy -= BMRDay
+        
+        # if energy is negative, an individual dies
+        if self.Energy <0:
+            self.Alive=False
+
+
+
+    def Move_CI(self,
+                SP,
+                Resources,
+                SumWeight,
+                NPerLoc,
+                landscape,
+                TimeC,
+                TimeD,
+                grid):
+        '''Regulating foraging behavior of an individual
+        This function is written for a squared landscape!!!'''
+        def foraging(y,x, nutrients):
+                
+            #creating mask array (0: cell which will not be masked, 1: cells which will be masked)
+            #Foraging_Area (name of mask array)initially only contains 1
+            #   1) determine square of suitable cells=> these become 0
+            #   2) this square is minimized starting from the corners (cells become 1 again)
+            #    until area of unmasked cells approximates area of circle.
+            Foraging_Area = np.zeros((grid)) + 1
+            #Dimension of the landscape (landscape must be squared!!!)
+            dim=grid[0]
+            #Surface of Perfect Circle representing Foraging Area
+            Circle = math.pi * (r ** 2) #[m] 
+            #Surface of Square approximating Foraging Area
+            Surface_square = (((np.ceil((r/SP)-0.5)*2)+1)*SP) ** 2 #[m]
+            #Radius of circle expressed in number of cells 
+            l = (np.ceil((r/SP)-0.5))#[cells]         
+            
+            #3 possible cases:
+            #1)Surfaces of circle and square (representing
+            #foraging area) are smaller than total landscape surface
+            if (Circle<(dim*SP)**2) and (Surface_square<(dim*SP)**2):
+                #Borders of the Square of Foraging Area
+                D, U, L, R =(y-l)%dim, (y+l+1)%dim,\
+                            (x-l)%dim, (x+l+1)%dim #[coordinates]
+        
+                #The square doesn't exceed borders of grid
+                if D < U and L < R:
+                    Foraging_Area[D:U, L:R] = 0
+        
+                #The square does exceed borders of grid
+                #3 possibilities:
+                elif D > U and L > R:
+                    Foraging_Area[D:, L:] = 0
+                    Foraging_Area[:U, L:] = 0
+                    Foraging_Area[D:, :R] = 0
+                    Foraging_Area[:U, :R] = 0
+        
+                elif D > U:
+                    Foraging_Area[D:, L:R] = 0
+                    Foraging_Area[:U, L:R] = 0
+        
+                else: #L<R
+                    Foraging_Area[D:U, L:] = 0
+                    Foraging_Area[D:U, :R] = 0
+        
+                #Trying to recreate a circular foraging area  
+                #by cutting corners of square
+                i = 1
+                Surface=Surface_square
+                while Surface > Circle:
+                    Surface -= (4 * i * (SP ** 2))
+                    if Surface > Circle:
+                    #decrease the number of unmasked patches in foraging area
+                        diff=[item for item in zip(range(0,i), range(i-1,-1,-1))]
+                        for d1,d2 in diff:
+                            for tup in itertools.product([(D+d1)%dim, (U-1-d1)%dim],\
+                                                         [(L+d2)%dim, (R-1-d2)%dim]):
+                                Foraging_Area[tup] = 1
+                    i+=1
+        
+            #2) Surface of circle (representing foraging area) is smaller
+            #than total landscape surface but square's surface exceeds it
+            elif (Circle<(dim*SP)**2) and (Surface_square>=(dim*SP)**2):
+                #Complete foraging range is unmasked
+                Foraging_Area -= 1
+                #Square's surface equals landscape' s surface
+                Surface_square = (dim*SP)**2 #[m]
+                
+                #Borders of the Square of Foraging Area
+                D, U, L, R = y-l, y+l, x-l, x+l #[coordinates]
+                
+                #Try to recreate a circular foraging area 
+                #by cutting the corners of square
+                Surface_A = Surface_square
+                A=set()
+                i=1                 
+                #The square is decreasing in surface up to the point where an
+                #extra cut would result in a square which is smaller than 
+                #the circle. As such, the surface of the square 
+                #is never smaller than the surface of the circle!
+                while Surface_A >= Circle:
+        
+                    B=A.copy()
+                    diff=[item for item in zip(range(0,i), range(i-1,-1,-1))]
+                    for d1,d2 in diff:
+                        for tup in itertools.product([(D+d1)%dim, (U-d1)%dim],\
+                                                     [(L+d2)%dim, (R-d2)%dim]):
+                            A.add(tup)
+    
+        
+                    Surface_A=Surface_square-(len(A)*(SP**2))
+                    i+=1           
+                    
+                for tup in B:
+                    Foraging_Area[tup]=1
+            
+            #3) Surfaces of circle and square (representing foraging area)
+            #do exceed total landscape surface
+            else: #Circle >= (dim*SP)**2
+                #The entire landscape is considered foraging area
+                Foraging_Area-=1
+    
+            
+            #informed movement
+            ##Mask the array of the Resource distribution with the foraging area 
+            R_Area = np.ma.masked_array(nutrients, Foraging_Area)
+            
+            #print(R_Area.max())
+            if R_Area.max()==0:
+                #partially informed movement
+                R_Area=((Foraging_Area-1)**2)*landscape 
+                                                    
+                #acquire the suitable patch within the foraging area
+                (new_y, new_x) = np.ma.where(R_Area == 1)
+            
+            else:
+                #informed movement
+                #acquire the patches with maximum amount of resources in the foraging area
+                (new_y, new_x) = np.ma.where(R_Area == R_Area.max())
+            
+            #select random patch out of all patches with maximum resources        
+            value = rnd.choice(range(len(new_y)))
+            
+            return int(new_y[value]), int(new_x[value])    
+            
+            
+        if self.identity=='consumer':
+            #checking whether individual will move with 
+            #p the chance of moving for an individual during a day 
+            #if no resources are present: p equals 1 and ind always moves
+            #if resources>imax of ind: p negative and ind never moves
+            p= 1- (Resources[self.y, self.x]/ self.Consume_CI(TimeC))
+            #print(p, self.Resources.ResDist[ind.y, ind.x], ind.Consume_CI(TimeC))
+            if rnd.random()<p:
+    
+                #Cost of movement(J/s): 0.17W (kg) ^ 0.75 + 3.4W (kg) (Peters 1983 p96)
+                CostPerSec =  (0.17 * (self.Weight**0.75)) + (3.4 * self.Weight) -0.14 * (self.Weight**0.751)#[J/s]
+                #determining tm: time invested in movement at day t [s]
+                tm= self.Energy / CostPerSec  if (self.Energy / CostPerSec) <TimeD else TimeD
+                #Energy expended on movement is removed from the energy reservoir
+                self.Energy -= CostPerSec*tm   
+                #Speed of walking insects(m/s): 0.3W (kg) ^ 0.29 (Buddenbrock 1934) 
+                #dmax: total covered distance at time t
+                dmax = 0.30 * (self.Weight**0.29)*tm#[m]
+                
+                perc_range=0.096989967 + (301.0033444816 *self.Weight)#[m]
+            
+                #Here, r is  the radius of a circle representing the foraging area of an individual during one day.
+                #Within this foraging area, an individual will move towards the cell with the highest amount of resources.
+                r = math.sqrt(((2*dmax*perc_range)+ (math.pi *perc_range**2))/math.pi) + rnd.uniform (-0.5*SP,0.5*SP)#[m/day]
+                
+                #When individual able to move outside patch
+                if (r/SP) > 0.5:
+                    self.y, self.x= foraging(self.y, self.x, Resources)
+        
+        if self.identity=='predator':
+            #checking whether individual will move with 
+            #p the chance of moving for an individual during a day 
+            if SumWeight[self.y, self.x]==0: 
+                p=1
+            else:
+                WeightRatio=np.log10(self.Weight/(SumWeight[self.y, self.x]/NPerLoc[self.y, self.x]))
+    
+                sigma=1.066
+                mu=0.6
+                
+                predation_chance= 1/(sigma * np.sqrt(2 * np.pi)) *\
+                                np.exp( - (WeightRatio - mu)**2 / (2 * sigma**2))
+                                
+                max_predation_chance= 1/(sigma * np.sqrt(2 * np.pi)) *\
+                                np.exp( - (mu - mu)**2 / (2 * sigma**2))
+                                
+                Average_attack_rate= (predation_chance/ max_predation_chance) * (1/(1+np.exp(-0.25*(NPerLoc[self.y, self.x]-11))))
+                #print(p, self.Resources.ResDist[ind.y, ind.x], ind.Consume_CI(TimeC))
+                p= 1- Average_attack_rate #Average_attack_rate being value between 0 and 1
+                
+            if rnd.random()<p:
+    
+                #Cost of movement(J/s): 0.17W (kg) ^ 0.75 + 3.4W (kg) (Peters 1983 p96)
+                CostPerSec =  (0.17 * (self.Weight**0.75)) + (11.35 * (self.Weight**1.14)) -(0.14 * (self.Weight**0.751))#[J/s]
+                #determining tm: time invested in movement at day t [s]
+                tm= self.Energy / CostPerSec  if (self.Energy / CostPerSec) <TimeD else TimeD
+                #Energy expended on movement is removed from the energy reservoir
+                self.Energy -= CostPerSec*tm   
+                #Speed of walking invertebrate carnivores(m/s): 1.0045 (kg) ^ 0.42 (Buddenbrock 1934) 
+                #dmax: total covered distance at time t
+                dmax = 1.00447487395 * (self.Weight**0.42)*tm#[m]
+                
+                perc_range=0.096989967 + (301.0033444816 *self.Weight)#[m]
+            
+                #Here, r is  the radius of a circle representing the foraging area of an individual during one day.
+                #Within this foraging area, an individual will move towards the cell with the highest amount of resources.
+                r = math.sqrt(((2*dmax*perc_range)+ (math.pi *perc_range**2))/math.pi) + rnd.uniform (-0.5*SP,0.5*SP)#[m/day]
+                
+                #When individual able to move outside patch
+                if (r/SP) > 0.5:
+                    
+                    #determining attack rate in landscape:
+                    AverageWeight=SumWeight/NPerLoc
+                    
+                    x=np.log10(self.Weight/AverageWeight)
+                    sigma=1.066
+                    mu=0.6
+                    
+                    predation_chance= 1/(sigma * np.sqrt(2 * np.pi)) *\
+                                    np.exp( - (x - mu)**2 / (2 * sigma**2))
+                                    
+                    max_predation_chance= 1/(sigma * np.sqrt(2 * np.pi)) *\
+                                    np.exp( - (mu - mu)**2 / (2 * sigma**2))
+                                    
+                    attack_rate_landscape= (predation_chance/max_predation_chance) * (1/(1+np.exp(-0.25*(NPerLoc-11))))   
+                    
+                    attack_rate_landscape[np.isnan(attack_rate_landscape)]=0                   
+                    self.y, self.x= foraging(self.y, self.x, attack_rate_landscape)
+                    
+     
+
+    
+    def Growth_CI(self, 
+                 a,
+                 TimeC,
+                 AssimFrac):
+        '''Updating the actual size of an individual according to West et al. (2001)'''        
+        #Calculating the proportion of the total metabolic power/available energy devoted to growth (West et al. 2001)
+        #R = (1 - r) =  1 - (m/M) ^0.25        
+        #Threshold for growth = a proportion R of the maximum amount of energy that an individual can ingest in one day 
+        R=(1-(self.Weight/self.AdultWeight)**0.25)
+        DeltaGrowth = self.Energy / ( R*AssimFrac * 2.0 * (self.Weight**0.80) * TimeC)#[J]
+        
+        if DeltaGrowth > 1:DeltaGrowth=1
+        #energy used for growth is deleted from storage
+        self.Energy -= (DeltaGrowth*R * AssimFrac * 2.0 * (self.Weight**0.80) * TimeC)
+        #organism grows    
+        self.DevelAge += DeltaGrowth 
+        # m = M * {1 - [1 - (m0 / M) ^ 1/4] * e ^ [ -at / (4M) ^ 1/4]} ^ 4 
+        #(West et al. 2001) with weights expressed in gram
+        #term1 : (m0 / M) ^ 1/4
+        #term2 : e ^ [ -at / 4 * (M) ^ 1/4]
+        # m = M * {1 - [1 - term1] * term2 } ^ 4
+        self.Weight = ((self.AdultWeight*1000) * (
+                                                  (1 - 
+                                                   ((1 - (self.InitialWeight*1000/(self.AdultWeight*1000))**(0.25) )
+                                                     * math.exp((-a * self.DevelAge) /(4 * ((self.AdultWeight*1000)**(0.25))))
+                                                     )) ** 4))/1000#[kg]        
+        
+
+    def Mature_CI(self,
+                  NumberofEggs,
+                  TimeC,
+                  TimeD,
+                  AssimFrac):
+        '''checking whether an individual has reached maturity'''
+        if not self.Weight >= 0.99 * self.AdultWeight:
+            return False
+        
+        #Clutch size for aquatic poikilotherms:
+        #0.158W ^ 0.92 (RECALCULATED from Blueweiss et al. 1978)
+        ClutchSize = 0.158 * (self.Weight ** 0.92)#[kg]
+        
+        #Energy per kilogram of insect
+        EnergyKgInsect = 7000000#[J/kg]
+        
+        #Weight of individual egg
+        self.EggSize = ClutchSize / NumberofEggs#[kg]
+        
+        #Amount of energy given to egg for survival of its first day:
+        #Basal metabolic processes Cost + Total Movement Cost + Cost devoted to Growth
+        if self.identity=='consumer':
+            self.EggEnergy = ((0.14 * (self.EggSize**0.751)) * ((24 * 3600) - TimeD)) + \
+                ((0.17 * (self.EggSize**0.75) + (3.4 * self.EggSize))* TimeD) + \
+                ((1 - ((self.EggSize/self.AdultWeight)**0.25)) * \
+                (AssimFrac * (2.0 * (self.EggSize**0.80)) * TimeC))#[J]
+        else:
+            self.EggEnergy = ((0.14 * (self.EggSize**0.751)) * ((24 * 3600) - TimeD)) + \
+                ((0.17 * (self.EggSize**0.75) + (11.35*(self.EggSize**1.14)))* TimeD) + \
+                ((1 - ((self.EggSize/self.AdultWeight)**0.25)) * \
+                (AssimFrac * (2.0 * (self.EggSize**0.80)) * TimeC))#[J]
+            
+        
+        #Threshold for reproduction: Amount of Energy necessary for clutch + 
+        #Amount of Energy for every egg to survive one day 
+        self.ThresholdR =(ClutchSize * EnergyKgInsect) + (NumberofEggs * self.EggEnergy)#[J]
+        #individual becomes an adult
+        self.Adult=True
+        
+        
+    
+    
+    def Reproduce_CI(self,
+                     NumberOfEggs,
+                     MinWeight,
+                     MaxWeight,
+                     Mutationrate,
+                     TimeC,
+                     t):
+                         
+        '''Returns list of offspring in case an individual has gathered enough energy to produce it. '''
+        if self.Energy >= self.ThresholdR:
+            Offspring = []
+            #create total number of eggs
+            for _ in range(NumberOfEggs):
+                #mutation rate
+                if rnd.random() < Mutationrate:                 
+                    NewAdultWeight= self.AdultWeight + rnd.uniform(-0.5*self.AdultWeight, 0.5*self.AdultWeight)
+                    neutral= 'mutation'
+                    if NewAdultWeight<max(self.EggSize,(10**MinWeight)):
+                        NewAdultWeight=max(self.EggSize,(10**MinWeight))   
+                    elif NewAdultWeight> (10**MaxWeight):
+                        NewAdultWeight= (10**MaxWeight)                                                         
+                else:
+                    NewAdultWeight=self.AdultWeight
+                    neutral=self.neutral
+                #create new larvae in population
+                egg=ConInd(#variation in maximum size of consumer
+                        self.identity,
+                        NewAdultWeight, 
+                        neutral,
+                        t,
+                        self.x,
+                        self.y,
+                        self.EggSize,
+                        self.EggEnergy
+                        )
+                Offspring.append(egg)
+            
+            return Offspring
+
+        
+class ConSpec: 
+    def __init__(self, 
+                 Startpop_C,
+                 Startpop_P,
+                 MinWeight_C,
+                 MaxWeight_C,
+                 MinWeight_P,
+                 MaxWeight_P,
+                 TimeC,
+                 TimeD,
+                 AssimFrac,
+                 landscape,
+                 grid,
+                 NumberofEggs,
+                 Resource,
+                 t):
+        '''Initializing a consumer species'''
+        self.landscape = landscape        
+        self.MinWeight_C = MinWeight_C
+        self.MaxWeight_C = MaxWeight_C
+        self.MinWeight_P = MinWeight_P
+        self.MaxWeight_P = MaxWeight_P
+        self.TimeC = TimeC
+        self.TimeD = TimeD  
+        self.AssimFrac = AssimFrac
+        self.totaladults_C = Startpop_C
+        self.totallarvae_C = 0
+        self.totaladults_P = Startpop_P
+        self.totallarvae_P = 0
+        self.grid=grid
+        self.NumberofEggs= NumberofEggs
+        #list of individuals
+        self.ConList = []
+        self.SumWeight=np.zeros(grid)
+        self.NPerLoc=np.zeros(grid)
+        self.IndexPerLoc=np.empty(grid, dtype=object)
+        
+        for y in range(grid[0]):
+            for x in range (grid[1]):
+                self.IndexPerLoc[y,x]=[]
+        
+     
+        
+        def initialize (Startpop, MinWeight, MaxWeight, identity):      
+        #add initial amount of consumers at random places in the grid
+            for _ in range(Startpop):
+                
+                #Initial variation
+                AdultWeight =(10**(rnd.uniform(MinWeight, MaxWeight)))
+                y = rnd.randint(0,grid[0] - 1)#randint: boundaries included => -1
+                x = rnd.randint(0,grid[1] - 1)
+                
+                #no consumers should be introduced in non-suitable cells
+                while self.landscape[y, x] == 0:
+                    y = rnd.randint(0,grid[0] - 1)
+                    x = rnd.randint(0,grid[1] - 1)
+                    
+                
+                if identity=='consumer':
+                #each individual gets enough energy to survive and move during the first day
+                    EnergyCon = (((0.14 * (AdultWeight**0.751)) * ((24 * 3600) - self.TimeD)) + \
+                    ((0.17 * (AdultWeight**0.75) + (3.4 * AdultWeight)) * self.TimeD))
+                else:#identity=='predator'
+                    EnergyCon = (((0.14 * (AdultWeight**0.751)) * ((24 * 3600) - self.TimeD)) + \
+                    ((0.17 * (AdultWeight**0.75) + (11.35 * (AdultWeight**1.14))) * self.TimeD))
+                
+                #add each individual to the list
+                NewInd=ConInd(identity,
+                              AdultWeight,
+                              'OriginalPop',
+                              t, 
+                              x,
+                              y,
+                              AdultWeight,
+                              EnergyCon,
+                              DevelAge = 'startpop',
+                              stage=True) 
+                #add missing attributes to each individual by maturing them
+                NewInd.Mature_CI(self.NumberofEggs,
+                                 TimeC,
+                                 TimeD,
+                                 AssimFrac)
+                #add individual adult to list              
+                self.ConList.append(NewInd)
+                
+                if identity=='consumer': 
+                    self.SumWeight[y,x]+=NewInd.Weight
+                    self.NPerLoc[y,x]+=1
+                    self.IndexPerLoc[y,x].append(len(self.ConList)-1)
+        
+        initialize(Startpop_C, self.MinWeight_C, self.MaxWeight_C, 'consumer')
+        initialize(Startpop_P, self.MinWeight_P, self.MaxWeight_P, 'predator')
+        
+            
+    def New_consumer(self, t,MinWeight,MaxWeight, identity):
+        
+        '''Introduction of single consumer or predator every 10 time steps'''
+        #Initial variation
+        AdultWeight = (10**(rnd.uniform(MinWeight, MaxWeight)))
+
+        x = rnd.randint(0,self.grid[1] - 1)#randint: boundaries included => -1
+        y = rnd.randint(0,self.grid[0] - 1)
+        
+        #no consumers should be introduced in non-suitable cells
+        while self.landscape[y, x] == 0:
+            x = rnd.randint(0,self.grid[1] - 1)
+            y = rnd.randint(0,self.grid[0] - 1)
+        
+        #Energy level sufficient to survive a full day
+        if identity=='consumer':
+            print('new consumer')
+            #each individual gets enough energy to survive and move during the first day
+            EnergyCon = (((0.14 * (AdultWeight**0.751)) * ((24 * 3600) - self.TimeD)) + \
+            ((0.17 * (AdultWeight**0.75) + (3.4 * AdultWeight)) * self.TimeD))
+        else:#identity=='predator'
+            print('new predator')
+            EnergyCon = (((0.14 * (AdultWeight**0.751)) * ((24 * 3600) - self.TimeD)) + \
+            ((0.17 * (AdultWeight**0.75) + (11.35 * (AdultWeight**1.14))) * self.TimeD))
+        
+        #add individual adult to list      
+        NewInd=ConInd(identity,
+                      AdultWeight,
+                      'immigrant',
+                      t,
+                      x,
+                      y,
+                      AdultWeight,
+                      EnergyCon,
+                      DevelAge = 'intro',
+                      stage=True)
+                      
+        NewInd.Mature_CI(self.NumberofEggs,
+                         self.TimeC,
+                         self.TimeD,
+                         self.AssimFrac)  
+                         
+        return NewInd
+         
+    def Summary_Weights(self, allind):
+        '''Calculate the average and its variance of the actual weight
+            and AdultWeight of predators and prey. '''
+        '''Going over all individuals counting the amount of adults and larvae'''
+        self.totaladults_P, self.totallarvae_P, self.totaladults_C, self.totallarvae_C = 0,0,0,0
+        
+        AdultWeights_predator=[]
+        AdultWeights_consumer=[]
+
+        for ind in self.ConList:
+            if ind.identity=='predator':
+                
+                AdultWeights_predator.append(ind.AdultWeight)
+                
+                if ind.Adult==True:
+                    self.totaladults_P+=1
+                else:
+                    self.totallarvae_P+=1
+            else: 
+                
+                AdultWeights_consumer.append(ind.AdultWeight)
+                
+                if ind.Adult==True:
+                    self.totaladults_C+=1
+                else:
+                    self.totallarvae_C+=1
+                    
+        
+
+        
+        AdultWeights_predator.sort()
+        AdultWeights_consumer.sort()
+
+        
+        if len(AdultWeights_predator)>1:
+            output1=sp.describe(AdultWeights_predator,ddof=0) #number of obs,minmax, mean, var, skewnesss, kurtosis
+            output2=sp.variation(AdultWeights_predator)#coefficient of variation
+            output3=AdultWeights_predator[int(round(len(AdultWeights_predator)*0.025))]
+            output4=AdultWeights_predator[int(round(len(AdultWeights_predator)*0.975))-1]
+        
+        else:
+            output1,output2, output3, output4=[None]*6,None,None,None
+ 
+
+        if len(AdultWeights_consumer)>1:
+            output5=sp.describe(AdultWeights_consumer,ddof=0) #number of obs,minmax, mean, var, skewnesss, kurtosis
+            output6=sp.variation(AdultWeights_consumer)#coefficient of variation
+            output7=AdultWeights_consumer[int(round(len(AdultWeights_consumer)*0.025))]
+            output8=AdultWeights_consumer[int(round(len(AdultWeights_consumer)*0.975))-1]
+        
+        else:
+            output5,output6, output7, output8=[None]*6,None,None,None
+   
+        return(output1, output2, output3, output4, output5, output6, output7, output8)
+                   
+       
+class Resource:
+    def __init__(self, 
+                 IniNumR,
+                 MaxAmountR,
+                 Enc,
+                 landscape):
+        '''Initiate the resource class with ResDist (a distribution of all
+        resources in the landscape)being the most important state variable.'''
+        self.landscape = landscape
+        self.mask= (self.landscape -1)**2
+        self.MaxAmountR = MaxAmountR
+        self.Enc = Enc*landscape
+        self.ResDist = IniNumR * self.landscape
+    
+    def GrowResources(self, 
+                      GrowthspeedR):
+        '''Each time step resources grow within one cell according to a
+        logistic growth function'''
+        #logistic growth of resources dN/dt = rN * (K - N / K)
+        
+        self.ResDist+=self.Enc
+        self.ResDist += (GrowthspeedR * (self.ResDist)) * ((
+                        self.MaxAmountR - self.ResDist) / (
+                        self.MaxAmountR))
+        self.ResDist-=self.Enc
+        #when no resources left, add small percentage to reinitiate growth of resources
+    
+    def MeanVarR(self):
+        '''Determine the average amount of resources within the landscape.'''
+        Resources_only = np.ma.masked_array(self.ResDist, self.mask)
+        return (np.ma.mean(Resources_only), np.ma.var(Resources_only))
+    
+    def TotalAmountR(self):
+        '''Return the entire amount of resources in the landscape.'''
+        return np.sum(self.ResDist)
+        
+class Simulation:
+    def __init__(self,
+                 Maxtime,
+                 IniNumR,
+                 GrowthspeedR,
+                 MaxAmountR,
+                 Enc,
+                 SizePatch,
+                 TimeC,
+                 TimeD,
+                 a,
+                 AssimFrac,
+                 MinWeight_C,
+                 MaxWeight_C,
+                 MinWeight_P,
+                 MaxWeight_P,
+                 Mutationrate,
+                 NumberofEggs,
+                 P,
+                 H,
+                 Nrlandscape,
+                 grid):
+        '''Defining the most important variables of the simulation and 
+        defining the order of events during one day'''     
+        
+        t=0
+        
+        if P:
+            if H==0.0: H=0
+            elif H== 1.0: H=1
+            Title= 'Landscapes{}-H{}-P{}'.format(Nrlandscape, H, P)
+            self.landscape= np.load(Title+ '.npy')
+            print('Nrlandscape', '\t', Nrlandscape, '\t', 'P', '\t', P, '\t', 'H', '\t', H, '\n')
+            
+        else:
+            grid, P= (5,5), 0.5
+            self.landscape=np.array([[1.0,0.0,1.0,0.0,1.0],
+                                     [0.0,1.0,0.0,1.0,0.0],
+                                     [1.0,0.0,1.0,0.0,1.0],
+                                     [0.0,1.0,0.0,1.0,0.0],
+                                     [1.0,0.0,1.0,0.0,1.0]])
+            Title='test'
+
+
+                                            
+        Summary={'Time':[],
+                 'MeanR':[],
+                 'VarR':[],
+                 'TotalAmountR':[],
+                 'TotalAdultsP':[],
+                 'TotalLarvaeP':[],
+                 'TotalAdultsC':[],
+                 'TotalLarvaeC':[],
+                 
+                 'AWeightAverageP':[],
+                 'AWeightVarianceP':[],
+                 'AWeightSkewnessP':[],
+                 'AWeightKurtosisP':[],
+                 'AWeightCVP':[],
+                 'AWeightLowerP':[],
+                 'AWeightUpperP':[],
+
+                 'AWeightAverageC':[],
+                 'AWeightVarianceC':[],
+                 'AWeightSkewnessC':[],
+                 'AWeightKurtosisC':[],
+                 'AWeightCVC':[],
+                 'AWeightLowerC':[],
+                 'AWeightUpperC':[]
+                 }
+
+        #create class resources
+        self.Resources = Resource(IniNumR, MaxAmountR, Enc, self.landscape)
+        
+        #Mean density of Startpop:2 individuals per suitable cell                          
+        Startpop_C = int((grid[0]**2)*(P/2))
+        Startpop_P = 0#1000#10
+        
+        #create consumer species 1
+        self.ConSpec1 = ConSpec(Startpop_C,
+                                Startpop_P,
+                                MinWeight_C,
+                                MaxWeight_C,
+                                MinWeight_P,
+                                MaxWeight_P,
+                                TimeC,
+                                TimeD,
+                                AssimFrac,
+                                self.landscape,
+                                grid,
+                                NumberofEggs,
+                                self.Resources,
+                                t)  
+
+        print(self.ConSpec1.SumWeight)
+        
+        #calculating alpha, beta and gamma variability
+        suitable_patches=np.where(self.landscape==1.0)
+        samples=[d for d in range (len(suitable_patches[0]))]
+        rnd.shuffle(samples)
+        variability_dict={} 
+        variability_dictC={}
+        variability_dictP={}
+        for b in range (1000):
+            variability_dict[str(suitable_patches[0][samples[b]])+\
+                             '-'+str(suitable_patches[1][samples[b]])]=[]
+            variability_dictC[str(suitable_patches[0][samples[b]])+\
+                             '-'+str(suitable_patches[1][samples[b]])]=[]
+            variability_dictP[str(suitable_patches[0][samples[b]])+\
+                             '-'+str(suitable_patches[1][samples[b]])]=[]
+            
+        samples_time_st=[Maxtime-f for f in range (0,200,10)]
+
+        #sampling predator prey body size ratio
+        BSR=[]
+        
+        #tracing occupancy
+        OC_lijst, OP_lijst = [],[]
+        
+        #tracking 1000 consumers and predators within the landscape during their lifetime
+        locationsP, locationsC= dict(), dict()
+        id_set=set()
+        N_traced_eggsC, N_traced_eggsP=0,0
+        samples_time_m=[Maxtime-s for s in range (300,1500,10)]
+                        
+        #those individuals which did not die are added to New_List
+        New_list=[]
+        #as long as individuals are present and maxtime is not reached
+        while (len(self.ConSpec1.ConList) > 0) and (t < Maxtime):
+            print(t,
+                  self.Resources.MeanVarR()[0],
+                  len (self.ConSpec1.ConList),
+                  self.ConSpec1.totaladults_C,
+                  self.ConSpec1.totallarvae_C,
+                  self.ConSpec1.totaladults_P,
+                  self.ConSpec1.totallarvae_P)
+            #print(self.Resources.ResDist)
+            '''ConDist=np.array([[0.0,0.0,0.0,0.0,0.0],
+                             [0.0,0.0,0.0,0.0,0.0],
+                             [0.0,0.0,0.0,0.0,0.0],
+                             [0.0,0.0,0.0,0.0,0.0],
+                             [0.0,0.0,0.0,0.0,0.0]])'''
+            
+
+            #at the start of each day, New_list is emptied
+            del New_list[:]
+            
+            samplingBSR=False
+            if t>Maxtime-100: samplingBSR=True
+            
+            #every 10 days an immigrant arrives in the landscape
+            if t%10==0:
+                New_list.append(self.ConSpec1.New_consumer(t, MinWeight_C, MaxWeight_C, 'consumer'))
+                New_list.append(self.ConSpec1.New_consumer(t, MinWeight_P, MaxWeight_P, 'predator'))
+                
+            if t==20:
+                for _ in range(1000):
+                    New_list.append(self.ConSpec1.New_consumer(t, MinWeight_P, MaxWeight_P, 'predator'))
+            
+            samplingC, samplingP = False,False
+            #tracking 1000 consumers within the landscape during their lifetime
+            if (t in samples_time_m) and (N_traced_eggsC<1000):
+                samplingC=True
+                all_eggsC=[]
+            #tracking 1000 predators within the landscape during their lifetime
+            if (t in samples_time_m) and (N_traced_eggsP<1000):
+                samplingP=True
+                all_eggsP=[]
+                
+            #for each individual in the community
+            for q in range(len(self.ConSpec1.ConList)):
+                ind=self.ConSpec1.ConList[q]
+                #checking whether individual has not yet been consumed
+                if ind.Alive==True:
+                    #start daily events of all consumers
+                    #1: cost of basal metabolic rate
+                    ind.BMR_CI()
+    
+                    #only if individuals survived they continue their daily events
+                    if ind.Alive==True:
+                        
+                        #predators and consumers move
+                        if ind.identity=='consumer': 
+                            self.ConSpec1.SumWeight[ind.y, ind.x]-=ind.Weight
+                            self.ConSpec1.NPerLoc[ind.y, ind.x]-=1
+                            del self.ConSpec1.IndexPerLoc[ind.y, ind.x] [self.ConSpec1.IndexPerLoc[ind.y, ind.x].index(q)]
+                            
+                        ind.Move_CI(SizePatch,
+                                self.Resources.ResDist,
+                                self.ConSpec1.SumWeight,
+                                self.ConSpec1.NPerLoc,
+                                self.landscape,
+                                TimeC,
+                                TimeD,
+                                grid)
+                        
+                        #trace locations of 1000 consumers and predators
+                        if str(id(ind))+ str(ind.t) in id_set: 
+                            if ind.identity=='consumer':
+                                locationsC[str(id(ind))+ str(ind.t)].append((ind.y,ind.x))
+                            else:
+                                locationsP[str(id(ind))+ str(ind.t)].append((ind.y,ind.x))
+                        #update sumweight and indexperloc           
+                        if ind.identity=='consumer':                        
+                            self.ConSpec1.SumWeight[ind.y, ind.x]+=ind.Weight
+                            self.ConSpec1.NPerLoc[ind.y, ind.x]+=1
+                            self.ConSpec1.IndexPerLoc[ind.y, ind.x].append(q)
+    
+                        #only larvae grow and mature   
+                        if ind.Adult==False:
+                            #update sumweight
+                            if ind.identity=='consumer': 
+                                self.ConSpec1.SumWeight[ind.y, ind.x]-=ind.Weight
+                                
+                            ind.Growth_CI(a,
+                                          TimeC,
+                                          AssimFrac)
+                            #update sumweight
+                            if ind.identity=='consumer':                        
+                                self.ConSpec1.SumWeight[ind.y, ind.x]+=ind.Weight
+                                          
+                            ind.Mature_CI(NumberofEggs,
+                                          TimeC,
+                                          TimeD,
+                                          AssimFrac)
+                            
+                        #only adults reproduce
+                        if ind.Adult==True:
+                            if ind.identity=='consumer':
+                                eggs=ind.Reproduce_CI(NumberofEggs,
+                                                       MinWeight_C,
+                                                       MaxWeight_C,
+                                                       Mutationrate,
+                                                       TimeC,
+                                                       t) 
+                                if (samplingC==True) and (eggs!= None):
+                                    all_eggsC+=eggs
+                                 
+                            else:
+                                eggs=ind.Reproduce_CI(NumberofEggs,
+                                                       MinWeight_P,
+                                                       MaxWeight_P,
+                                                       Mutationrate,
+                                                       TimeC,
+                                                       t) 
+                                if (samplingP==True) and (eggs!= None):
+                                    all_eggsP+=eggs
+                                 
+                            if eggs != None:
+                                New_list+=eggs
+                                ind.Alive=False
+                                #update sumweight
+                                if ind.identity=='consumer': 
+                                    self.ConSpec1.SumWeight[ind.y, ind.x]-=ind.Weight
+                                    self.ConSpec1.NPerLoc[ind.y, ind.x]-=1
+                                    del self.ConSpec1.IndexPerLoc[ind.y, ind.x] [self.ConSpec1.IndexPerLoc[ind.y, ind.x].index(q)]
+                                #trace location of 1000 predators and consumers
+                                if str(id(ind))+ str(ind.t) in id_set:
+                                    id_set.remove(str(id(ind))+ str(ind.t))
+                                    if ind.identity=='consumer':
+                                        locationsC[str(id(ind))+ str(ind.t)].append('R'+ ' ' + str(ind.AdultWeight))
+                                    else:
+                                        locationsP[str(id(ind))+ str(ind.t)].append('R'+ ' ' + str(ind.AdultWeight))
+                                 
+    
+    
+                                 
+                        #all individuals consume except for adults that reproduced
+                        if ind.Alive==True:
+                            imax=ind.Consume_CI(TimeC)
+                            
+                            if ind.identity=='consumer':                                
+                                ind.Energy+=min(imax*AssimFrac,
+                                                self.Resources.ResDist[ind.y][ ind.x]*AssimFrac)
+                                self.Resources.ResDist[ind.y][ind.x]= (max (0,
+                                                                            self.Resources.ResDist[ind.y][ind.x]-imax))
+                                
+                            elif ind.identity=='predator':
+                                #if prey is present
+                                if self.ConSpec1.SumWeight[ind.y, ind.x]>0:
+                                    #print('predator eats')
+                                    Amount_consumed=0
+                                    z=0
+                                    consumers_died=set()
+                                    #randomze prey order per predator
+                                    rnd.shuffle(self.ConSpec1.IndexPerLoc[ind.y, ind.x])
+                                    assert int(self.ConSpec1.SumWeight[ind.y, ind.x]*10**10)== int(sum(
+                                                                                          [self.ConSpec1.ConList[w].Weight
+                                                                                          for w in self.ConSpec1.IndexPerLoc[ind.y, ind.x]]
+                                                                                          )*10**10), 'error in calculation sumweight'
+                                    assert self.ConSpec1.NPerLoc[ind.y, ind.x]== len(self.ConSpec1.IndexPerLoc[ind.y, ind.x]), 'error in calculating NPerLoc'                                                    
+                                    while (Amount_consumed < imax) and (z<len(self.ConSpec1.IndexPerLoc[ind.y, ind.x])):
+                                        index_prey= self.ConSpec1.IndexPerLoc[ind.y, ind.x][z]
+                                        prey= self.ConSpec1.ConList[index_prey]
+                                        assert (prey.y, prey.x, prey.identity)== (ind.y, ind.x, 'consumer') , 'error in localizing individuals'
+                                        
+                                        #predators can only eat individuals smaller than themselves.   
+                                        sigma=1.066
+                                        mu=0.6
+                                        mass_ratio = np.log10(ind.Weight/prey.Weight)
+                                        
+                                        predation_chance= 1/(sigma * np.sqrt(2 * np.pi)) *\
+                                                        np.exp( - (mass_ratio - mu)**2 / (2 * sigma**2))
+                                                        
+                                        max_predation_chance= 1/(sigma * np.sqrt(2 * np.pi)) *\
+                                                        np.exp( - (mu - mu)**2 / (2 * sigma**2))
+                                                        
+                                        attack_rate= (predation_chance/max_predation_chance)*(1/(1+math.exp(-0.25*(self.ConSpec1.NPerLoc[ind.y, ind.x]-11))))
+                                                      
+                                        if rnd.random()<attack_rate:
+                                            if samplingBSR==True:
+                                                BSR.append(ind.Weight/prey.Weight)
+                                            #print('consumer died')
+                                            Amount_consumed= min((prey.Weight*7000000 + prey.Energy + Amount_consumed),
+                                                                 imax)#in Joules                                            
+                                            #prey dies
+                                            prey.Alive=False
+                                            #trace individuals which died in order to update IndexPerLoc
+                                            consumers_died.add(index_prey)
+                                            #Update SumWeight
+                                            self.ConSpec1.SumWeight[prey.y, prey.x]-=prey.Weight
+                                            self.ConSpec1.NPerLoc[prey.y, prey.x]-=1
+
+                                            #trace location of 1000 consumers
+                                            if str(id(prey))+ str(prey.t) in id_set:
+                                                id_set.remove(str(id(prey))+ str(prey.t))                                                
+                                                locationsC[str(id(prey))+ str(prey.t)].append('P'+ ' ' + str(prey.AdultWeight))
+                                    
+
+                                        z+=1
+                                        
+                                    ind.Energy+= Amount_consumed * AssimFrac
+                                    #update IndexPerLoc        
+                                    for consumer_died in consumers_died:
+                                        del self.ConSpec1.IndexPerLoc[ind.y, ind.x] [self.ConSpec1.IndexPerLoc[ind.y, ind.x].index(consumer_died)]
+                                      
+                            else:
+                                print(ind.identity)
+                                assert t<0, 'unknown identity'
+                            
+                            
+                    #else: individual died due to BMR: update sumweight and IndexPerLoc
+                    else:
+                        if ind.identity=='consumer': 
+                            self.ConSpec1.SumWeight[ind.y, ind.x]-=ind.Weight
+                            self.ConSpec1.NPerLoc[ind.y, ind.x]-=1
+                            del self.ConSpec1.IndexPerLoc[ind.y, ind.x] [self.ConSpec1.IndexPerLoc[ind.y, ind.x].index(q)]
+                        #tracing 1000 consumers and predators                             
+                        if str(id(ind))+ str(ind.t)in id_set:
+                            id_set.remove(str(id(ind))+ str(ind.t))
+                            if ind.identity=='consumer':
+                                locationsC[str(id(ind))+ str(ind.t)].append('D' + ' ' + str(ind.AdultWeight))
+                            else:
+                                locationsP[str(id(ind))+ str(ind.t)].append('D' + ' ' + str(ind.AdultWeight))
+            #print(self.ConSpec1.SumWeight)
+            #print(self.ConSpec1.IndexPerLoc)
+            
+            #resources grow
+            self.Resources.GrowResources(GrowthspeedR)
+            #print(ConDist)
+            #print(self.Resources.ResDist) 
+
+            for individual in self.ConSpec1.ConList:
+                if individual.Alive==True:
+                    New_list.append(individual)
+                    
+            del self.ConSpec1.ConList [:]
+            self.ConSpec1.ConList=New_list[:]
+
+            #randomize order of consumers
+            rnd.shuffle(self.ConSpec1.ConList)
+
+            #update self.ConSpec1.SumWeight and IndexPerLoc based on new ConSpec1.ConList            
+            for y in range(grid[0]):
+                for x in range (grid[1]):
+                    del self.ConSpec1.IndexPerLoc[y,x] [:]
+                    self.ConSpec1.SumWeight[y,x]=0
+                    self.ConSpec1.NPerLoc[y,x]=0
+            #update id per location
+            for i in range(len(self.ConSpec1.ConList)):
+                indiv=self.ConSpec1.ConList[i] 
+                if indiv.identity=='consumer':
+                    self.ConSpec1.SumWeight[indiv.y, indiv.x]+=indiv.Weight
+                    self.ConSpec1.NPerLoc[indiv.y, indiv.x]+=1
+                    self.ConSpec1.IndexPerLoc[indiv.y,indiv.x].append(i)            
+             
+            
+            #tracing 1000 consumers
+            if samplingC: 
+                if len(all_eggsC)>100:
+                    
+                    rnd.shuffle(all_eggsC)
+                    for position in range(100):
+                        locationsC[str(id(all_eggsC[position]))+str(all_eggsC[position].t)]=[(all_eggsC[position].y,all_eggsC[position].x)]
+                        id_set.add(str(id(all_eggsC[position]))+str(all_eggsC[position].t))
+                    N_traced_eggsC+=100
+                    
+                else: 
+                    for egg in all_eggsC:
+                        locationsC[str(id(egg))+ str(egg.t)]=[(egg.y,egg.x)]
+                        id_set.add(str(id(egg))+ str(egg.t))
+                        N_traced_eggsC+=1 
+                        
+            #tracing 1000 predators
+            if samplingP: 
+                if len(all_eggsP)>100:
+                    
+                    rnd.shuffle(all_eggsP)
+                    for position in range(100):
+                        locationsP[str(id(all_eggsP[position]))+str(all_eggsP[position].t)]=[(all_eggsP[position].y,all_eggsP[position].x)]
+                        id_set.add(str(id(all_eggsP[position]))+str(all_eggsP[position].t))
+                    N_traced_eggsP+=100
+                    
+                else: 
+                    for egg in all_eggsP:
+                        locationsP[str(id(egg))+ str(egg.t)]=[(egg.y,egg.x)]
+                        id_set.add(str(id(egg))+ str(egg.t))
+                        N_traced_eggsP+=1 
+                        
+            if t in samples_time_st:
+                #creating array with sum of all body weights of predator
+                ConBSP=np.zeros(grid)
+                for ind in self.ConSpec1.ConList:
+                    if ind.identity=='predator':
+                        ConBSP[ind.y, ind.x]+=ind.Weight
+                #calculating alpha, beta and gamma variability
+                for key in variability_dict.keys():
+                    coo_y, coo_x=key.split('-')
+                    variability_dictP[key].append(ConBSP[int(coo_y),int(coo_x)]) 
+                    variability_dictC[key].append(self.ConSpec1.SumWeight[int(coo_y),int(coo_x)])    
+                    variability_dict[key].append(ConBSP[int(coo_y),int(coo_x)] + self.ConSpec1.SumWeight[int(coo_y),int(coo_x)])    
+                #defining occupancy of suitable patches (O)
+                occupancy_consumer=0
+                occupancy_predator=0
+                for y in range (grid[0]):
+                    for x in range(grid[1]):
+                        if ConBSP[y,x]>0:                            
+                                occupancy_predator+=1
+                        if len(self.ConSpec1.IndexPerLoc[y,x])>0:
+                                occupancy_consumer+=1
+               
+                OC_lijst.append(occupancy_consumer)
+                OP_lijst.append(occupancy_predator)
+            
+            P4_P, PCV_P, PL_P, PU_P, P4_C, PCV_C, PL_C, PU_C =self.ConSpec1.Summary_Weights(self.ConSpec1.ConList)
+            MeanR, VarR= self.Resources.MeanVarR()
+            Summary['Time'].append(t)
+            Summary['MeanR'].append(MeanR)
+            Summary['VarR'].append(VarR)
+            Summary['TotalAmountR'].append(self.Resources.TotalAmountR())
+            Summary['TotalAdultsP'].append(self.ConSpec1.totaladults_P)
+            Summary['TotalLarvaeP'].append(self.ConSpec1.totallarvae_P)    
+            Summary['TotalAdultsC'].append(self.ConSpec1.totaladults_C)
+            Summary['TotalLarvaeC'].append(self.ConSpec1.totallarvae_C)   
+            Summary['AWeightAverageP'].append(P4_P[2])
+            Summary['AWeightVarianceP'].append(P4_P[3])
+            Summary['AWeightSkewnessP'].append(P4_P[4])
+            Summary['AWeightKurtosisP'].append(P4_P[5])
+            Summary['AWeightCVP'].append(PCV_P) 
+            Summary['AWeightLowerP'].append(PL_P)
+            Summary['AWeightUpperP'].append(PU_P)
+            Summary['AWeightAverageC'].append(P4_C[2])
+            Summary['AWeightVarianceC'].append(P4_C[3])
+            Summary['AWeightSkewnessC'].append(P4_C[4])
+            Summary['AWeightKurtosisC'].append(P4_C[5])
+            Summary['AWeightCVC'].append(PCV_C) 
+            Summary['AWeightLowerC'].append(PL_C)
+            Summary['AWeightUpperC'].append(PU_C)
+		
+            #Writing out adult weight of 50000 individuals during simulation (checking for equilibrium)
+            if t==2000:
+                Write_Weights(Title,
+                              t,
+                              self.ConSpec1.ConList)
+            
+            t+=1
+            
+         
+        Write_Files(
+                Summary,
+                self.ConSpec1.ConList,
+                Title,
+                self.Resources.ResDist,
+                self.landscape,
+                grid,
+                [item for item in variability_dict.values()],
+                [item for item in variability_dictP.values()],
+                [item for item in variability_dictC.values()],
+                locationsC,
+                locationsP,
+                OC_lijst,
+                OP_lijst,
+                BSR)
+
+
+                
+#calculating runtime             
+start=timeit.default_timer() 
+Simulation(Maxtime =3000, #day
+           #MaxAmountR>=IniNumR+Enc
+           IniNumR = 100, #[J]
+           GrowthspeedR =0.9, #[J/s]
+           MaxAmountR = 2000, #[J]
+           Enc = 2, #[J]
+           SizePatch = 0.25,#float(sys.argv[1]), #[m] #size of patch
+           TimeC = 15 * 3600, #[s] #time spent on consumption: 15 hours/day
+           TimeD = 1 * 3600, #[s] #time spent moving: 1 hour/day
+           a = 0.2, #West et al. 2001
+           AssimFrac = 0.55, #efficiently assimilated energetic fraction of resources
+           MinWeight_C = -5, #exponent of 10
+           MaxWeight_C = -2.522878745, #exponent of 10
+           MinWeight_P = -5, #exponent of 10
+           MaxWeight_P = -2.522878745, #exponent of 10
+           Mutationrate = 0.001, #rate of mutation at reproduction
+           NumberofEggs = 15, #amount of eggs in clutch is constant (e.g. 15)
+           P= float(sys.argv[1]),
+           H= float(sys.argv[2]),
+           Nrlandscape=int(float(sys.argv[3])),
+           grid=(200,200))
+stop=timeit.default_timer()
+print(stop-start)
